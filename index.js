@@ -1,13 +1,16 @@
-const express = require('express');
-const pool = require('./db');
-const app = express();
+const express = require("express");
+const pool = require("./db"); // Tu conexión anterior de PostgreSQL
+const connectMongoDB = require("./mongoConnection"); // Nueva conexión de MongoDB
+const Vehiculo = require("./Vehiculo"); // El modelo que acabamos de crear
 
+const app = express();
 app.use(express.json());
 
+connectMongoDB();
 
 
-app.get('/', (req, res) => {
-  res.send('API funcionando');
+app.get("/", (req, res) => {
+  res.send("API funcionando con Postgres y MongoDB");
 });
 
 app.get('/alumnos', async (req, res) => {
@@ -122,6 +125,62 @@ app.post('/materias', async (req, res) => {
   } catch (error) {
     console.error('Error al insertar materia:', error);
     res.status(500).json({ error: 'Error al insertar la materia' });
+  }
+});
+
+app.get("/api/getVehiculos", async (req, res) => {
+  try {
+    const vehiculos = await Vehiculo.find(); // Busca todos los documentos en la colección
+
+    res.status(200).json({
+      message: "Vehículos consultados correctamente",
+      data: vehiculos,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error al consultar vehículos",
+      error: error.message,
+    });
+  }
+});
+
+app.post("/api/createVehiculo", async (req, res) => {
+  try {
+    const { marca, modelo, anio, color } = req.body;
+
+    // Validación de campos vacíos
+    if (!marca || !modelo || !anio || !color) {
+      return res.status(400).json({
+        message: "Todos los campos son obligatorios",
+      });
+    }
+
+    // Validación de año numérico
+    if (isNaN(anio)) {
+      return res.status(400).json({
+        message: "El año debe ser numérico",
+      });
+    }
+
+    const nuevoVehiculo = new Vehiculo({
+      marca,
+      modelo,
+      anio,
+      color,
+    });
+
+    // Guardar en la base de datos de MongoDB
+    await nuevoVehiculo.save();
+
+    res.status(201).json({
+      message: "Vehículo creado correctamente",
+      data: nuevoVehiculo,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error al crear vehículo",
+      error: error.message,
+    });
   }
 });
 
